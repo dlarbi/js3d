@@ -37,13 +37,13 @@ var FractalLandscape = function() {
 
 FractalLandscape.prototype = new Landscape();
 
-var Camera = function() {  
+var Camera = function() {
   var self = this;
-  
+
   // viewMatrix: The view produced by the camera.draw() function is entirely dependent on the current view matrix.
-  // We start with the viewMatrix as an Identity matrix, and keyboard/mouse controls make modifications to it. 
+  // We start with the viewMatrix as an Identity matrix, and keyboard/mouse controls make modifications to it.
   // At render time for each frame we multiply the (x,y,z) coordinates of our 3d model (for example a rectangle produced by the Landscape Class) by the viewMatrix
-  // the resulting matrix represents the pixels for our camera perspective 
+  // the resulting matrix represents the pixels for our camera perspective
   var viewMatrix = {
     1:[1,0,0,0],
     2:[0,1,0,0],
@@ -58,46 +58,63 @@ var Camera = function() {
   var w = self.landscapeCanvas.width;
   var h = self.landscapeCanvas.height;
 
-  this.init = function() {
+  this.init = function(modelPixels) {
     self.cameraControls();
+    self.modelPixels = modelPixels;
   }
 
   this.cameraControls = function() {
     $("body").keydown(function(e) {
-      if (e.keyCode == 37) { // left
-        self.movement('panLeft');
+      if (e.keyCode == 37) {       // left
+        self.movement('cwRotateX');
       } else if(e.keyCode == 39) { // right
-        self.movement('panRight');
-      } else if(e.keyCode == 38) { // up
+        self.movement('ccwRotateX');
+      } else if(e.keyCode == 73) { // i (in)
         self.movement('scaleUp');
-      } else if(e.keyCode == 40) { // up
+      } else if(e.keyCode == 79) { // o (out)
         self.movement('scaleDown');
+      } else if(e.keyCode == 38) { // up
+        self.movement('cwRotateY');
+      } else if(e.keyCode == 40) { // down
+        self.movement('ccwRotateY');
       }
     });
   }
 
   this.movement = function(direction) {
-    if(direction === 'panLeft') {
-      w -= 3;
-    } else if(direction === 'panRight') {
-      w += 3;
+    if(direction === 'cwRotateX') {
+      viewMatrix[2][1] = Math.cos(.1);
+      viewMatrix[2][2] = Math.sin(.1);
+      viewMatrix[3][1] = -Math.sin(.1);
+      viewMatrix[3][2] = Math.cos(.1);
+    } else if(direction === 'ccwRotateX') {
+      viewMatrix[2][1] = Math.cos(.1);
+      viewMatrix[2][2] = -Math.sin(.1);
+      viewMatrix[3][1] = Math.sin(.1);
+      viewMatrix[3][2] = Math.cos(.1);
+    } else if(direction === 'cwRotateY') {
+      viewMatrix[1][0] = Math.cos(.1);
+      viewMatrix[1][2] = -Math.sin(.1);
+      viewMatrix[3][0] = Math.sin(.1);
+      viewMatrix[3][2] = Math.cos(.1);
+    } else if(direction === 'ccwRotateY') {
+      viewMatrix[1][0] = Math.cos(.1);
+      viewMatrix[1][2] = Math.sin(.1);
+      viewMatrix[3][0] = -Math.sin(.1);
+      viewMatrix[3][2] = Math.cos(.1);
     } else if(direction === 'scaleUp') {
-      viewMatrix = {
-        1:[viewMatrix[1][0]+.1,0,0,0],
-        2:[0,viewMatrix[2][1]+.1,0,0],
-        3:[0,0,viewMatrix[3][2]+.1,0],
-        4:[0,0,0,viewMatrix[4][3]+.1]
-      }
+      viewMatrix[1][0] = viewMatrix[1][0] + .1;
+      viewMatrix[2][1] = viewMatrix[2][1] + .1;
+      viewMatrix[3][2] = viewMatrix[3][2] + .1;
+      viewMatrix[4][3] = viewMatrix[4][3] + .1;
     } else if(direction === 'scaleDown') {
-      viewMatrix = {
-        1:[viewMatrix[1][0]-.1,0,0,0],
-        2:[0,viewMatrix[2][1]-.1,0,0],
-        3:[0,0,viewMatrix[3][2]-.1,0],
-        4:[0,0,0,viewMatrix[4][3]-.1]
-      }
+      viewMatrix[1][0] = viewMatrix[1][0] - .1;
+      viewMatrix[2][1] = viewMatrix[2][1] - .1;
+      viewMatrix[3][2] = viewMatrix[3][2] - .1;
+      viewMatrix[4][3] = viewMatrix[4][3] - .1;
     }
   }
-  
+
   this.toWorldView = function(modelPixels) {
     var worldViewPixels = [];
     // Multiply our 3d model coordinates by the View Matrix
@@ -124,14 +141,13 @@ var Camera = function() {
 
   // camera.draw() accepts a 3d Model's (x,y,z) coordinates as an argument, then multiplies them by the viewMatrix
   // and draws the result inside a canvas.
-  this.draw = function(modelPixels) {
+  this.draw = function() {
     self.clearCanvas(self.landscapeContext);
     self.canvasData = self.landscapeContext.getImageData(0, 0, self.landscapeCanvas.width, self.landscapeCanvas.height);
-    var coords3d = self.toWorldView(modelPixels);
+    var coords3d = self.toWorldView(self.modelPixels);
     var i = coords3d.length;
     while(i--){
       var pixel = coords3d[i];
-      var scale = 100/(100+pixel.z);
       var x2d = 80*pixel.x/(pixel.z+250)  + w/2;
       var y2d = 80*pixel.y/(pixel.z+250)  + self.landscapeCanvas.height/2;
       var idx = (Math.round(y2d) * self.canvasData.width + Math.round(x2d))*4;
@@ -141,6 +157,19 @@ var Camera = function() {
       self.canvasData.data[idx + 3] = pixel.color[3];
     }
     self.landscapeContext.putImageData(self.canvasData, 0, 0);
+
+    // update the camera.modelPixels equal to the current frame, so next camera.draw() multiplies our current frame by the viewMatrix
+    // instead of the original model pixels
+    self.modelPixels = coords3d;
+
+    // We reset the viewMatrix to the identity matrix because camera.draw() is called in JS3D.gameLoop(), so in 10ms the viewMatrix will be multiplied
+    // by our current pixel data. We want the next frame to remain identical to the current frame unless there is further user input.
+    viewMatrix = {
+      1:[1,0,0,0],
+      2:[0,1,0,0],
+      3:[0,0,1,0],
+      4:[0,0,0,1]
+    };
   }
 }
 
@@ -148,8 +177,8 @@ var JS3D = function() {
   var self = this;
   this.init = function() {
     self.camera = new Camera();
-    self.camera.init();
     self.landscape = new FractalLandscape();
+    self.camera.init(self.landscape.getPixels());
     self.startLoop();
   }
 
@@ -162,7 +191,7 @@ var JS3D = function() {
   }
 
   this.drawWorld = function() {
-    self.camera.draw(self.landscape.getPixels());
+    self.camera.draw();
   }
 
   this.gameLoop = function() {
