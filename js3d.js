@@ -85,6 +85,8 @@ var Camera = function() {
   this.init = function(modelPixels) {
     self.cameraControls();
     self.modelPixels = modelPixels;
+    self.weapon = new Weapon();
+    self.weapon.modelWeapon(1);
   }
 
   this.cameraControls = function() {
@@ -290,9 +292,7 @@ var JS3D = function() {
   var self = this;
   this.init = function() {
     self.camera = new Camera();
-    self.landscape = new FractalLandscape();
-    self.weapon = new Weapon();
-    self.weapon.modelWeapon(1);
+    self.landscape = new FractalLandscape();    
     self.camera.init(self.landscape.getPixels());
     self.startLoop();
   }
