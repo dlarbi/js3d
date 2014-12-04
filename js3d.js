@@ -37,6 +37,24 @@ var FractalLandscape = function() {
 
 FractalLandscape.prototype = new Landscape();
 
+var Weapon = function() {
+	//This computer sucks, so I'm going to see what the performance is like
+	//modeling weapons with css instead of on the canvas.
+	var addCrosshair = function() {
+		var crosshair = $('<div id="baseCrosshair"></div>');
+		$('body').append(crosshair);
+	}
+	
+	this.modelWeapon = function(crosshair) {
+		if(crosshair === 1) {
+			addCrosshair();
+		}
+		var weapon = $('<div id="baseWeapon"></div>');
+		$('body').append(weapon);
+	}
+}
+
+
 var Camera = function() {
   var self = this;
 
@@ -57,7 +75,7 @@ var Camera = function() {
     4:[0,0,0,1]
   };
 
-  // Defines canvas for drawing landscape upon
+  // Defines canvas for drawing landscape upon, extend this to draw multiple canvases
   self.landscapeCanvas = document.getElementById("js3d-landscape-canvas");
   self.landscapeContext = self.landscapeCanvas.getContext("2d");
   self.canvasData = self.landscapeContext.createImageData(self.landscapeCanvas.width, self.landscapeCanvas.height);
@@ -124,13 +142,13 @@ var Camera = function() {
 
   this.movement = function(direction) {
     if(direction === 'cwRotateX') {
-      self.calculateViewMatrix([0, 0, -1],-.1,0);
+      self.calculateViewMatrix([0, 0, -1],-.15,0);
     } else if(direction === 'ccwRotateX') {
-      self.calculateViewMatrix([0, 0, -1],.1,0);
+      self.calculateViewMatrix([0, 0, -1],.15,0);
     } else if(direction === 'cwRotateY') {
-      self.calculateViewMatrix([0, 0, -1],0,-.1);
+      self.calculateViewMatrix([0, 0, -1],0,-.15);
     } else if(direction === 'ccwRotateY') {
-      self.calculateViewMatrix([0, 0, -1],0,.1);
+      self.calculateViewMatrix([0, 0, -1],0,.15);
     } else if(direction === 'forward') {
       worldMatrix = {
         1:[1,0,0,0],
@@ -273,6 +291,8 @@ var JS3D = function() {
   this.init = function() {
     self.camera = new Camera();
     self.landscape = new FractalLandscape();
+    self.weapon = new Weapon();
+    self.weapon.modelWeapon(1);
     self.camera.init(self.landscape.getPixels());
     self.startLoop();
   }
